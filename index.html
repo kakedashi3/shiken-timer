@@ -210,9 +210,19 @@
       <label>1問の目安<small>1問あたりの秒数</small></label>
       <input type="number" id="setPace" min="10" max="600" value="120">
     </div>
-    <div class="seg" id="soundSeg" style="margin-top:2px">
-      <button data-s="1" class="on">目安オーバーで鳴らす</button>
-      <button data-s="0">鳴らさない</button>
+    <div class="field" style="display:block">
+      <label style="margin-bottom:6px;display:block">自動で次の問題へ<small>目安経過で自動的に次問のタイマー開始</small></label>
+      <div class="seg" id="autoSeg">
+        <button data-a="1" class="on">自動で進む</button>
+        <button data-a="0">手動で進む</button>
+      </div>
+    </div>
+    <div class="field" style="display:block">
+      <label style="margin-bottom:6px;display:block">終了音</label>
+      <div class="seg" id="soundSeg">
+        <button data-s="1" class="on">目安経過で鳴らす</button>
+        <button data-s="0">鳴らさない</button>
+      </div>
     </div>
     <div class="row" style="display:flex;gap:10px">
       <button class="btn btn-ghost" id="closeBtn" style="font-size:16px">閉じる</button>
@@ -243,8 +253,8 @@
   var cfg = load();
   function load(){
     try{ var s = JSON.parse(localStorage.getItem('takken-timer')||'{}');
-      return { Q:+s.Q||50, totalMin:+s.totalMin||120, paceSec:+s.paceSec||120, sound:(s.sound===0?0:1) };
-    }catch(e){ return {Q:50,totalMin:120,paceSec:120,sound:1}; }
+      return { Q:+s.Q||50, totalMin:+s.totalMin||120, paceSec:+s.paceSec||120, sound:(s.sound===0?0:1), auto:(s.auto===0?0:1) };
+    }catch(e){ return {Q:50,totalMin:120,paceSec:120,sound:1,auto:1}; }
   }
   function save(){ localStorage.setItem('takken-timer', JSON.stringify(cfg)); }
 
@@ -328,7 +338,13 @@
     var dt=(ts-prevTs)/1000; prevTs=ts;
     totalLeft -= dt; qElapsed += dt;
     if(totalLeft <= 0){ totalLeft=0; finish(); render(); return; }
-    if(cfg.sound && qElapsed >= PACE && lastBeepQ !== current){ lastBeepQ=current; beep(); }
+    // 1問の目安を超えたら: 合図 → (自動進行 on かつ最終問でなければ) 次の問題へ
+    if(qElapsed >= PACE){
+      if(cfg.sound && lastBeepQ !== current){ lastBeepQ=current; beep(); }
+      if(cfg.auto && current < Q){
+        current++; qElapsed -= PACE; lastBeepQ=0;   // 端数を次問へ繰り越して時計を狂わせない
+      }
+    }
     render();
     tick=requestAnimationFrame(loop);
   }
@@ -392,19 +408,22 @@
   function openModal(){
     el('setQ').value=cfg.Q; el('setMin').value=cfg.totalMin; el('setPace').value=cfg.paceSec;
     el('soundSeg').querySelectorAll('button').forEach(function(b){ b.classList.toggle('on', (+b.dataset.s)===cfg.sound); });
+    el('autoSeg').querySelectorAll('button').forEach(function(b){ b.classList.toggle('on', (+b.dataset.a)===cfg.auto); });
     modal.classList.add('open');
   }
-  el('soundSeg').addEventListener('click', function(e){
+  function segPick(id){ el(id).addEventListener('click', function(e){
     var b=e.target.closest('button'); if(!b) return;
-    el('soundSeg').querySelectorAll('button').forEach(function(x){x.classList.remove('on');});
+    el(id).querySelectorAll('button').forEach(function(x){x.classList.remove('on');});
     b.classList.add('on');
-  });
+  }); }
+  segPick('soundSeg'); segPick('autoSeg');
   el('applyBtn').addEventListener('click', function(){
     var q=Math.max(1,Math.min(100, +el('setQ').value||50));
     var mn=Math.max(1,Math.min(300, +el('setMin').value||120));
     var pc=Math.max(10,Math.min(600, +el('setPace').value||120));
     var snd=+el('soundSeg').querySelector('button.on').dataset.s;
-    cfg={Q:q,totalMin:mn,paceSec:pc,sound:snd}; save();
+    var au=+el('autoSeg').querySelector('button.on').dataset.a;
+    cfg={Q:q,totalMin:mn,paceSec:pc,sound:snd,auto:au}; save();
     modal.classList.remove('open'); reset();
   });
 
