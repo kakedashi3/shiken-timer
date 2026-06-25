@@ -64,21 +64,18 @@
   /* 上段: 第N問・残り問・開始問題 を横並び */
   .qline{display:flex;align-items:center;justify-content:center;gap:clamp(8px,2.2vw,16px);
     flex-wrap:wrap;font-weight:800;}
-  .qline .qn{font-size:clamp(16px,2.6vh,22px);color:var(--ink);font-variant-numeric:tabular-nums;}
+  /* 問題数表示 = クリックで開始問題を選択 */
+  .qline .qn{font-family:inherit;font-size:clamp(16px,2.6vh,22px);color:var(--ink);font-weight:800;
+    font-variant-numeric:tabular-nums;background:var(--panel2);border:1px solid var(--line);
+    border-radius:12px;padding:clamp(5px,1vh,9px) clamp(10px,2.5vw,16px);cursor:pointer;
+    display:inline-flex;align-items:center;gap:6px;line-height:1;transition:filter .12s;}
   .qline .qn b{font-size:1.5em;color:var(--accent);}
   .qline .qn i{font-style:normal;color:var(--muted);font-weight:800;}
+  .qline .qn .caret{color:var(--accent);font-size:.8em;margin-left:2px;}
+  .qline .qn:active{filter:brightness(.96);}
+  .qline .qn.locked{cursor:default;opacity:.85;}
+  .qline .qn.locked .caret{display:none;}
   .qline .qsubinline{font-size:clamp(11px,1.7vh,14px);color:var(--muted);font-weight:700;}
-  /* 開始する問題の選択バナー（スタート前のみ） */
-  .startpick{flex:0 0 auto;width:100%;display:flex;align-items:center;justify-content:center;
-    gap:clamp(8px,2vw,14px);background:#eaf4fd;border:1.5px dashed var(--accent);color:var(--ink);
-    border-radius:14px;padding:clamp(9px,1.7vh,15px);cursor:pointer;font-family:inherit;
-    font-weight:800;box-shadow:var(--shadow);flex-wrap:wrap;text-align:center;}
-  .startpick .sp-l{font-size:clamp(12px,1.8vh,15px);color:var(--muted);font-weight:700;}
-  .startpick .sp-q{font-size:clamp(15px,2.3vh,19px);}
-  .startpick .sp-q b{color:var(--accent);font-size:1.25em;}
-  .startpick .sp-tap{font-size:clamp(11px,1.6vh,13px);color:var(--accent);font-weight:800;}
-  .startpick:active{filter:brightness(.96);}
-  .startpick.hidden{display:none;}
 
   /* アナログ時計 */
   .clockwrap{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(2px,.8vh,8px);}
@@ -108,7 +105,8 @@
   .readouts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:clamp(7px,1.6vw,12px);flex:0 0 auto;}
   .ro{background:var(--panel);border:1px solid var(--line);border-radius:14px;
     padding:clamp(6px,1.2vh,12px) clamp(4px,1vw,10px);text-align:center;box-shadow:var(--shadow);
-    display:flex;flex-direction:column;justify-content:center;}
+    display:flex;flex-direction:column;justify-content:center;
+    min-width:0;overflow:hidden;}  /* 文字幅の変化でトラックが揺れない=時計のガタつき防止 */
   .ro .k{font-size:clamp(9px,1.4vh,12px);color:var(--muted);font-weight:700;letter-spacing:.03em;}
   .ro .val{font-variant-numeric:tabular-nums;font-weight:900;line-height:1.05;
     font-size:clamp(20px,4.6vh,34px);margin-top:2px;transition:color .25s;}
@@ -179,7 +177,6 @@
     .clockdigital{font-size:12px;}
     .ro .val{font-size:clamp(17px,4.4vh,26px);}
     button.btn{padding:9px;font-size:15px;}
-    .startpick{padding:8px;}
     .hint{display:none;}
   }
   /* settings sheet がはみ出す端末向けにスクロール許可 */
@@ -196,7 +193,7 @@
 
   <div class="card">
     <div class="qline">
-      <span class="qn">第 <b id="qnum">1</b> <i>/ <span id="qtotal">50</span></i> 問</span>
+      <button class="qn" id="qnBtn" title="クリックで開始問題を選択">第 <b id="qnum">1</b> <i>/ <span id="qtotal">50</span></i> 問<span class="caret">▾</span></button>
       <span class="qsubinline" id="qsub">残り 50 問</span>
     </div>
 
@@ -214,13 +211,6 @@
       <div class="clockdigital" id="clockdigital">13:00:00</div>
     </div>
   </div>
-
-  <!-- スタート前だけ表示: 開始する問題の選択（横幅いっぱいで分かりやすく） -->
-  <button class="startpick" id="qpick">
-    <span class="sp-l">開始する問題</span>
-    <span class="sp-q">第 <b id="pickQ">1</b> 問 から</span>
-    <span class="sp-tap">タップで変更 ▸</span>
-  </button>
 
   <!-- 現在の問題・各残り時間を横並びに集約（縦を節約して時計を大きく） -->
   <div class="readouts">
@@ -332,7 +322,7 @@
   var tick=null, prevTs=0;
 
   var el = function(id){return document.getElementById(id);};
-  var qpick=el('qpick'), qmodal=el('qmodal');
+  var qnBtn=el('qnBtn'), qmodal=el('qmodal');
   var qnum=el('qnum'), qtotal=el('qtotal'), qsub=el('qsub');
   var perq=el('perq'), perqval=el('perqval'), perqttl=el('perqttl'), qbarfill=el('qbarfill');
   var totalval=el('totalval'), totalfill=el('totalfill');
@@ -399,7 +389,7 @@
     startBtn.textContent='スタート'; startBtn.classList.remove('running');
     render();
   }
-  function updateQpick(){ el('pickQ').textContent=current; qpick.classList.toggle('hidden', started || done); }
+  function updateQpick(){ qnBtn.classList.toggle('locked', started || done); }
 
   function fmt(s){ s=Math.max(0,Math.round(s)); var m=Math.floor(s/60); var ss=s%60; return m+':' + (ss<10?'0':'') + ss; }
   function fmtSigned(s){ var sign = s>0?'＋':(s<0?'−':'±'); return sign+fmt(Math.abs(s)); }
@@ -546,8 +536,7 @@
   function clampStart(){ var n=Math.max(1,Math.min(Q, Math.round(+startQ.value)||1)); startQ.value=n; return n; }
   function updateQNote(){ var n=clampStart(); el('qNote').textContent='第'+n+'問から開始（残り '+fmt(Math.max(0,TOTAL-(n-1)*PACE))+'）'; }
   function openQpick(){ if(started||done) return; startQ.value=current; startQ.max=Q; updateQNote(); qmodal.classList.add('open'); }
-  qpick.addEventListener('click', openQpick);
-  qnum.parentElement.addEventListener('click', openQpick); // 大きな数字タップでも開く
+  qnBtn.addEventListener('click', openQpick);
   el('qMinus').addEventListener('click', function(){ startQ.value=clampStart()-1; updateQNote(); });
   el('qPlus').addEventListener('click', function(){ startQ.value=clampStart()+1; updateQNote(); });
   startQ.addEventListener('input', updateQNote);
