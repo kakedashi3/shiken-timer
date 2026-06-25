@@ -133,6 +133,7 @@
     border-radius:15px;letter-spacing:.03em;color:#fff;
     padding:clamp(11px,2.2vh,20px);font-size:clamp(15px,2.5vh,22px);
     transition:transform .06s, filter .15s;box-shadow:var(--shadow);
+    white-space:nowrap;
   }
   button.btn:active{transform:translateY(2px) scale(.99);}
   .btn-next{background:linear-gradient(180deg,#4aa3ec,#2f8de4);}
@@ -171,6 +172,7 @@
     .modal{padding:12px;}
     .sheet{gap:12px;}
     .field input{width:104px;font-size:18px;}
+    .sheet .row{flex-direction:column;}  /* モーダルのボタンを縦並び全幅にして折り返し防止 */
   }
   /* 横長・低い画面（スマホ横持ち等）: 時計と余白を圧縮して1画面維持 */
   @media (max-height:560px){
