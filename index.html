@@ -558,16 +558,25 @@
 
   // ---- 開始問題の選択モーダル ----
   var startQ=el('startQ');
-  function clampStart(){ var n=Math.max(1,Math.min(Q, Math.round(+startQ.value)||1)); startQ.value=n; return n; }
-  function updateQNote(){ var n=clampStart(); el('qNote').textContent='第'+n+'問から開始（残り '+fmt(Math.max(0,TOTAL-(n-1)*PACE))+'）'; }
-  function openQpick(){ if(started||done) return; startQ.value=current; startQ.max=Q; updateQNote(); qmodal.classList.add('open'); }
+  function clampN(v){ return Math.max(1, Math.min(Q, Math.round(+v)||1)); }
+  function noteFor(n){ el('qNote').textContent='第'+n+'問から開始（残り '+fmt(Math.max(0,TOTAL-(n-1)*PACE))+'）'; }
+  // 入力中は値を書き換えない（空欄や複数桁の打ち込みを邪魔しない）。note だけ安全側で更新
+  function updateQNote(){
+    var raw=startQ.value.trim();
+    if(raw===''){ el('qNote').textContent='開始する問題番号を入力'; return; }
+    noteFor(clampN(raw));
+  }
+  // 確定時にだけ clamp して入力欄に書き戻す
+  function commitStartQ(){ var n=clampN(startQ.value); startQ.value=n; noteFor(n); return n; }
+  function openQpick(){ if(started||done) return; startQ.value=current; startQ.max=Q; noteFor(current); qmodal.classList.add('open'); }
   qnBtn.addEventListener('click', openQpick);
-  el('qMinus').addEventListener('click', function(){ startQ.value=clampStart()-1; updateQNote(); });
-  el('qPlus').addEventListener('click', function(){ startQ.value=clampStart()+1; updateQNote(); });
+  el('qMinus').addEventListener('click', function(){ startQ.value=clampN(startQ.value)-1; commitStartQ(); });
+  el('qPlus').addEventListener('click', function(){ startQ.value=clampN(startQ.value)+1; commitStartQ(); });
   startQ.addEventListener('input', updateQNote);
+  startQ.addEventListener('blur', commitStartQ);
   el('qClose').addEventListener('click', function(){ qmodal.classList.remove('open'); });
   qmodal.addEventListener('click', function(e){ if(e.target===qmodal) qmodal.classList.remove('open'); });
-  el('qApply').addEventListener('click', function(){ setStart(clampStart()); qmodal.classList.remove('open'); });
+  el('qApply').addEventListener('click', function(){ setStart(commitStartQ()); qmodal.classList.remove('open'); });
 
   // ---- 左上タイトルのその場編集（タップ/クリックで入力、localStorage 保存） ----
   var appTitle=el('appTitle');
